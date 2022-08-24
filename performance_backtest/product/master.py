@@ -1,6 +1,10 @@
 from performance_backtest.product.ssaving import Ssaving
+from performance_backtest.product.son import Son
 from common.helper.config.utils import RunDate, date_range
+from performance_backtest.constant.rebalance import generate_rebalance_date_range
 import numpy as np
+
+REBALANCE_DATE_RANGE = generate_rebalance_date_range()
 
 
 class MasterPortfolio:
@@ -22,6 +26,7 @@ class MasterPortfolio:
         self.rebalance_option = rebalance_option
         self.product_list = product_list
         self.portfolio = []
+        self.total_value = []
 
     def create_object(self, product_class, start_date: RunDate, initial_amount):
         """
@@ -33,6 +38,8 @@ class MasterPortfolio:
         """
         if product_class == 'ssaving':
             return Ssaving(start_date=start_date, initial_amount=initial_amount)
+        if product_class == 'son':
+            return Son(start_date=start_date, initial_amount=initial_amount)
 
     def allocate(self):
         """
@@ -67,22 +74,46 @@ class MasterPortfolio:
                                                  volume=None,
                                                  interest=None,
                                                  price=None)
-            # b2 sau khi da co danh sach order thi se check renew
+            # neu khong phai la ngay dau tien thi check renew
+            # sau khi check renew (bao gom ca viec generate order moi)
+            # check xem ngay date_ co phai rebalance_date ko:
+                # neu la rebalance_date thi se thuc hien: tinh toan xem can tang hay giam gia tri cua tung portfolio dua
+                # tren gia tri tong portfolio ngay hom trc
+
+            temp_total_portfolio_value = 0.0
             for product in np.arange(len(self.product_list)):
-                self.portfolio[product]._check_renew(date_=date_) # với saving: nếu đáo hạn -> update order cũ, và tạo
+                self.portfolio[product]._check_renew(date_=date_)
+
+                if date_ in REBALANCE_DATE_RANGE:
+                    ytd_designed_product_value = self.total_value[-1][1] * self.product_list[product]['weight']
+                    ytd_actual_product_value = self.portfolio[product].value[-1][1]
+                    print(f"""
+                        at date: {date_}: we will rebalance {self.product_list[product]['product_class']} with following information:
+                        product_id {self.product_list[product]['id']}
+                        weight {self.product_list[product]['weight']}
+                        yesterday master portfolio value {self.total_value[-1][1]}
+                        this portfolio_value was: {ytd_actual_product_value}
+                        it should be rebalance to: {ytd_designed_product_value}
+                        """)
+                    self.portfolio[product]._cal_rebalance(date_=date_,
+                                                           rebalance_amount=ytd_designed_product_value -
+                                                                           ytd_actual_product_value)
+
                 self.portfolio[product]._cal_value(date_=date_)
-                # print(self.portfolio[product].order)
-            # b3 calculate portfolio value rùi đẩy kết quả vào
+                temp_total_portfolio_value += self.portfolio[product].value[-1][1]
+
+            self.total_value.append([date_, temp_total_portfolio_value])
 
 
 ### testing
 from common.helper.config import config
 from datetime import timedelta
 start_date = config.run_date - timedelta(days=360)
-end_date = config.run_date - timedelta(days=359)
+end_date = config.run_date - timedelta(days=1)
+end_date = start_date + timedelta(days=92)
 product_list = [
     dict(id=1, product_class='ssaving', weight=0.3),
-    dict(id=2, product_class='ssaving', weight=0.7)
+    dict(id=2, product_class='son', weight=0.7)
 ]
 master_portfolio = MasterPortfolio(start_date=start_date, end_date=end_date, initial_amount=1e9,
                                    rebalance_option=None,
