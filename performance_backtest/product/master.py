@@ -56,21 +56,30 @@ class MasterPortfolio:
         # calculate portfolio value
         for i in np.arange(len(self.date_range)):
             # print(self.date_range[i])
+            # b1 neu la ngay dau tien thi allocate portfolio rui gen_order
+            date_ = self.date_range[i]
+
             if i == 0:
                 self.allocate()
-                for u in np.arange(len(self.product_list)):
-                    self.portfolio[u]._gen_order(start=self.start_date, end=None, maturity=None,
-                                                 amount=self.portfolio[u].initial_amount,
+                for product in np.arange(len(self.product_list)):
+                    self.portfolio[product]._gen_order(start=self.start_date, end=None, maturity=None,
+                                                 amount=self.portfolio[product].initial_amount,
                                                  volume=None,
                                                  interest=None,
                                                  price=None)
-        # pass
+            # b2 sau khi da co danh sach order thi se check renew
+            for product in np.arange(len(self.product_list)):
+                self.portfolio[product]._check_renew(date_=date_) # với saving: nếu đáo hạn -> update order cũ, và tạo
+                self.portfolio[product]._cal_value(date_=date_)
+                # print(self.portfolio[product].order)
+            # b3 calculate portfolio value rùi đẩy kết quả vào
+
 
 ### testing
 from common.helper.config import config
 from datetime import timedelta
-start_date = config.run_date - timedelta(days=180)
-end_date = config.run_date - timedelta(days=170)
+start_date = config.run_date - timedelta(days=360)
+end_date = config.run_date - timedelta(days=359)
 product_list = [
     dict(id=1, product_class='ssaving', weight=0.3),
     dict(id=2, product_class='ssaving', weight=0.7)
