@@ -2,7 +2,7 @@ from common.helper.config.utils import RunDate
 from datetime import timedelta
 import numpy as np
 
-SSAVING_DEFAULT_TENOR = 90
+SSAVING_DEFAULT_TENOR = 30#90
 SSAVING_DEFAULT_INTEREST = 0.051
 SSAVING_DEFAULT_TAX = 0.05
 SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE = 0.002
@@ -40,7 +40,39 @@ class Ssaving:
         self.order.append(order)
 
     def _cal_rebalance(self, date_, rebalance_amount):
-        pass
+        """
+        neu rebalance_amount >0 thi gen_order moi
+        neu rebalance_amount <0: tìm cách làm nào:
+            1. filter nhung order con effective
+        :param date_:
+        :param rebalance_amount:
+        :return:
+        """
+        if rebalance_amount > 0:
+            self._gen_order(start=date_, end=None, maturity=None, amount=rebalance_amount,
+                                    volume=None, interest=SSAVING_DEFAULT_INTEREST, price=None)
+        else:
+            effective_order = self.filter_effective_order()
+
+            # update theo thu tu id cua giao dich giam dan (tuong duong can cu vao ngay start_date)
+            i = len(effective_order) - 1
+            while i >= 0:
+                discounted_rate = 1 / (
+                        1 + (SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE if (date_ - effective_order[i][1]).days < 30
+                             else
+                             SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE) * (date_ - effective_order[i][1]).days / 365
+                )
+                discounted_rebalance_amount = rebalance_amount * discounted_rate
+                if effective_order[i][4] + discounted_rebalance_amount < 0:
+                    # nếu amount + số tiền rebalance tính quy đổi về vẫn < 0 có nghĩa là cần rebalance tiếp
+                    # 1. tính rebalance amount còn lại
+                    rebalance_amount += effective_order[i][4] / discounted_rate
+                    # 2. update amount của order về 0
+                    effective_order[i][4] = 0
+                else:
+                    effective_order[i][4] += discounted_rebalance_amount
+                    rebalance_amount = 0  # rebalance du roi
+                i -= 1
 
     def _check_renew(self, date_):
         """
@@ -60,14 +92,23 @@ class Ssaving:
                     self._gen_order(start=date_, end=None, maturity=None, amount=new_order_amount,
                                     volume=None, interest=SSAVING_DEFAULT_INTEREST, price=None)
 
+    def filter_effective_order(self):
+        """
+        :return: eliminate order having end_date is not None
+        """
+        return list(filter(lambda order: order[2] is None, self.order))
+
     def _cal_value(self, date_):
         # với s-saving thì sẽ tạm tính trên lãi suất tất toán trước hạn
         # lý do: vì tại ngày tất toán đúng hạn (đáo hạn) thì đã có generate ra deal mới và trên deal đó thì số tiền đã được tính trên ls ban đầu
-        temp_value = 0.0
-        filter_out_end_date_order = list(filter(lambda order: order[2] is None, self.order))
-        port_added_current_value = sum(i[4] * (1 + (SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE
-                                                    if (date_-i[1]).days < 30 else
-                                                    SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE) *
-                                               (date_ - i[1]).days / 365) for i in filter_out_end_date_order)
+
+        # effective_order = list(filter(lambda order: order[2] is None, self.order))
+        # update 2022-08-25: thay lai suat tat toan truoc han bang dung lai suat hop dong
+        # SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE
+        #                                             if (date_-i[1]).days < 30 else
+        #                                             SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE
+        #
+        port_added_current_value = sum(i[4] * (1 + i[6] *
+                                               (date_ - i[1]).days / 365) for i in self.filter_effective_order())
         self.value.append([date_, port_added_current_value])
 

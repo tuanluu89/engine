@@ -108,9 +108,10 @@ class MasterPortfolio:
 ### testing
 from common.helper.config import config
 from datetime import timedelta
+import pandas as pd
 start_date = config.run_date - timedelta(days=360)
 end_date = config.run_date - timedelta(days=1)
-end_date = start_date + timedelta(days=92)
+end_date = start_date + timedelta(days=180)
 product_list = [
     dict(id=1, product_class='ssaving', weight=0.3),
     dict(id=2, product_class='son', weight=0.7)
@@ -120,3 +121,15 @@ master_portfolio = MasterPortfolio(start_date=start_date, end_date=end_date, ini
                                    product_list=product_list
                                    )
 master_portfolio.run()
+
+master_portfolio_df = pd.DataFrame(master_portfolio.total_value, columns=['date', 'total_value'])
+port1_df = pd.DataFrame(master_portfolio.portfolio[0].value, columns=['date', 'port1_value'])
+port2_df = pd.DataFrame(master_portfolio.portfolio[1].value, columns=['date', 'port2_value'])
+
+port1_df['date'] = port1_df['date'].apply(lambda x: x.to_date().strftime('%Y%m%d'))
+port2_df['date'] = port2_df['date'].apply(lambda x: x.to_date().strftime('%Y%m%d'))
+master_portfolio_df['date'] = master_portfolio_df['date'].apply(lambda x: x.to_date().strftime('%Y%m%d'))
+
+port1_port2_df = pd.merge(port1_df, port2_df, on='date')
+df = pd.merge(port1_port2_df, master_portfolio_df, on='date')
+df.to_excel('test3_no_rebalance.xlsx', index=False)
