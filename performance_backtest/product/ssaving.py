@@ -19,7 +19,6 @@ class Ssaving:
         self.interest_rate = interest_rate
         self.order = []
         self.value = []
-        pass
 
     def _gen_order(self, start, end, maturity, amount, volume, interest, price):
         """
@@ -36,7 +35,9 @@ class Ssaving:
         volume = volume
         interest = SSAVING_DEFAULT_INTEREST
         price = price
-        order = [id, start_date, end_date, maturity_date, amount, volume, interest, price]
+        # order = [id, start_date, end_date, maturity_date, amount, volume, interest, price]
+        order = dict(id=id, start_date=start_date, end_date=end_date,maturity_date=maturity_date, amount=amount,
+                     interest=interest)
         self.order.append(order)
 
     def _cal_rebalance(self, date_, rebalance_amount):
@@ -44,6 +45,7 @@ class Ssaving:
         neu rebalance_amount >0 thi gen_order moi
         neu rebalance_amount <0: tìm cách làm nào:
             1. filter nhung order con effective
+        added tax to formula
         :param date_:
         :param rebalance_amount:
         :return:
@@ -53,40 +55,43 @@ class Ssaving:
                                     volume=None, interest=SSAVING_DEFAULT_INTEREST, price=None)
         else:
             effective_order = self.filter_effective_order()
-
             # update theo thu tu id cua giao dich giam dan (tuong duong can cu vao ngay start_date)
             i = len(effective_order) - 1
             while i >= 0:
-                discounted_rate = 1 / (
-                        1 + (SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE if (date_ - effective_order[i][1]).days < 30
+                discounted_rate = 1 / ((
+                        1 + (SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE if (date_ - effective_order[i]['start_date']).days < 30
                              else
-                             SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE) * (date_ - effective_order[i][1]).days / 365
-                )
+                             SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE) * (date_ - effective_order[i]['start_date']).days / 365
+                )*(1-SSAVING_DEFAULT_TAX))
                 discounted_rebalance_amount = rebalance_amount * discounted_rate
-                if effective_order[i][4] + discounted_rebalance_amount < 0:
+                if effective_order[i]['amount'] + discounted_rebalance_amount < 0:
                     # nếu amount + số tiền rebalance tính quy đổi về vẫn < 0 có nghĩa là cần rebalance tiếp
                     # 1. tính rebalance amount còn lại
-                    rebalance_amount += effective_order[i][4] / discounted_rate
+                    rebalance_amount += effective_order[i]['amount'] / discounted_rate
                     # 2. update amount của order về 0
-                    effective_order[i][4] = 0
+                    effective_order[i]['amount'] = 0
                 else:
-                    effective_order[i][4] += discounted_rebalance_amount
+                    effective_order[i]['amount'] += discounted_rebalance_amount
                     rebalance_amount = 0  # rebalance du roi
                 i -= 1
 
     def _check_renew(self, date_):
         """
         list all orders that are expired at date_
+        added tax to formula
         :param date_:
         :return:
         """
         for i in np.arange(len(self.order)):
-            if self.order[i][2] is None: # neu end_date = None
-                if self.order[i][3] == date_:
+            if self.order[i]['end_date'] is None: # neu end_date = None
+                if self.order[i]['maturity_date'] == date_:
                     # update end_date = date_
-                    self.order[i][2] = date_
+                    self.order[i]['end_date'] = date_
                     # add new order
-                    new_order_amount = self.order[i][4] * (1 + self.order[i][6] * (self.order[i][2]-self.order[i][1]).days/365) # (self.order[i][2]-self.order[i][1])
+                    new_order_amount = self.order[i]['amount'] * \
+                                       (1 + self.order[i]['interest'] * (self.order[i]['end_date']-self.order[i]['start_date']).days/365) * \
+                                       (1-SSAVING_DEFAULT_TAX)
+                    # (self.order[i][2]-self.order[i][1])
                     # new order _amount = amount goc * (1 + ls * thoi gian / 365)
                         #TODO: trường hợp rebalance thì sẽ phải khác
                     self._gen_order(start=date_, end=None, maturity=None, amount=new_order_amount,
@@ -96,7 +101,7 @@ class Ssaving:
         """
         :return: eliminate order having end_date is not None
         """
-        return list(filter(lambda order: order[2] is None, self.order))
+        return list(filter(lambda order: order['end_date'] is None, self.order))
 
     def _cal_value(self, date_):
         # với s-saving thì sẽ tạm tính trên lãi suất tất toán trước hạn
@@ -107,8 +112,7 @@ class Ssaving:
         # SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE
         #                                             if (date_-i[1]).days < 30 else
         #                                             SSAVING_DEFAULT_PREWITHDRAW_GREATER_THAN_30DAY_RATE
-        #
-        port_added_current_value = sum(i[4] * (1 + i[6] *
-                                               (date_ - i[1]).days / 365) for i in self.filter_effective_order())
+        port_added_current_value = sum(i['amount'] * (1 + i['interest'] *
+                                               (date_ - i['start_date']).days / 365) for i in self.filter_effective_order())
         self.value.append([date_, port_added_current_value])
 
