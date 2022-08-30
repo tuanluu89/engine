@@ -89,8 +89,9 @@ class Ssaving:
                     self.order[i]['end_date'] = date_
                     # add new order
                     new_order_amount = self.order[i]['amount'] * \
-                                       (1 + self.order[i]['interest'] * (self.order[i]['end_date']-self.order[i]['start_date']).days/365) * \
-                                       (1-SSAVING_DEFAULT_TAX)
+                                       (1 + self.order[i]['interest'] * (self.order[i]['end_date']-self.order[i]['start_date']).days/365 \
+                                           * (1 - SSAVING_DEFAULT_TAX)
+                                        )
                     # (self.order[i][2]-self.order[i][1])
                     # new order _amount = amount goc * (1 + ls * thoi gian / 365)
                         #TODO: trường hợp rebalance thì sẽ phải khác
