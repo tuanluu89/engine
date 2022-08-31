@@ -21,6 +21,8 @@ class Son:
             self.interest_rate = SON_MIN_INTEREST_RATE
         self.order = []
         self.value = []
+        self.amount_not_allocated = [] ### TODO: đối với những coupon không reinvest đc do ko đủ phí sẽ chuyển vào book này.
+
 
     def _gen_order(self, start, end, maturity, amount, volume, interest, price):
         """
