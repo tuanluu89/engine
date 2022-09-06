@@ -38,7 +38,7 @@ class Ssaving:
         interest = SSAVING_DEFAULT_INTEREST
         price = price
         # order = [id, start_date, end_date, maturity_date, amount, volume, interest, price]
-        order = dict(id=id, start_date=start_date, end_date=end_date,maturity_date=maturity_date, amount=amount,
+        order = dict(id=id, start_date=start_date, end_date=end_date, maturity_date=maturity_date, amount=amount,
                      interest=interest)
         self.order.append(order)
 

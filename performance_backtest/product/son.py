@@ -74,9 +74,6 @@ class Son:
                                        (1 + self.order[i]['interest'] * (self.order[i]['end_date']-self.order[i]['start_date']).days/365 \
                                            * (1 - SON_DEFAULT_TAX)
                                         )
-                    # (self.order[i][2]-self.order[i][1])
-                    # new order _amount = amount goc * (1 + ls * thoi gian / 365)
-                        #TODO: trường hợp rebalance thì sẽ phải khác
                     self._gen_order(start=date_, end=None, maturity=None, amount=new_order_amount,
                                     volume=None, interest=None, price=None)
 
