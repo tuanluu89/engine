@@ -112,7 +112,7 @@ class SBond:
         else:
             self._gen_amount_not_allocated(start_date=start, amount=amount)
 
-    def _cal_rebalance(self, date_, rebalance_amount):
+    def _cal_rebalance(self, date_, rebalance_amount, rebalance_type):
         """
         :param rebalance_amount: số tiền cần tăng/giảm ở value của danh mục tại cuối ngày rebalance
         Trường hợp rebalance_amount >0: insert thêm order

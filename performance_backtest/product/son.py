@@ -46,7 +46,7 @@ class Son:
                      interest=interest)
         self.order.append(order)
 
-    def _cal_rebalance(self, date_, rebalance_amount):
+    def _cal_rebalance(self, date_, rebalance_amount, rebalance_type):
         """
         rebalance son: chi can thuc hien update last order la done (vi hang ngay deu insert new order va update balance truoc roi)
         :param date_:

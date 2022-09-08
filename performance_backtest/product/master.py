@@ -2,11 +2,11 @@ from performance_backtest.product.ssaving import Ssaving
 from performance_backtest.product.son import Son
 from performance_backtest.product.sbond import SBond
 from common.helper.config.utils import RunDate, date_range
-from performance_backtest.constant.rebalance import generate_rebalance_date_range
+from performance_backtest.constant.rebalance import generate_rebalance_date_range, EQUITY_IN_SIGNAL, EQUITY_OUT_SIGNAL
 import numpy as np
 
 REBALANCE_DATE_RANGE = generate_rebalance_date_range()
-
+REBALANCE_TYPE = [1, 2] # 1: Rebalance with equity signal in, 2: rebalance with equity signal out
 
 class MasterPortfolio:
     """
@@ -58,6 +58,23 @@ class MasterPortfolio:
             )
             self.portfolio.append(portfolio_i)
 
+    @staticmethod
+    def get_rebalance_type(date_: RunDate):
+        """ check xem ngày báo cáo có là ngày rebalance hay không
+        :param date_: ngày báo cáo
+        :return: rebalance_type:
+            0: không rebalance
+            1: rebalance theo hướng equity in
+            2: rebalance theo hướng equity out
+        """
+        filter_rebalance_range = list(
+            filter(lambda rebalance_range: rebalance_range['date'] == date_, REBALANCE_DATE_RANGE)
+        )
+        if not filter_rebalance_range:
+            return 0
+        else:
+            return filter_rebalance_range[0]['rebalance_type']
+
     def run(self):
         # for i = self.start_date to end_date
             # check xem có phải ngày thực hiện rebalance hay không
@@ -78,21 +95,27 @@ class MasterPortfolio:
                                                  volume=None,
                                                  interest=None,
                                                  price=None)
-            # neu khong phai la ngay dau tien thi check renew
-            # sau khi check renew (bao gom ca viec generate order moi)
-            # check xem ngay date_ co phai rebalance_date ko:
-                # neu la rebalance_date thi se thuc hien: tinh toan xem can tang hay giam gia tri cua tung portfolio dua
-                # tren gia tri tong portfolio ngay hom trc
+
             temp_total_portfolio_value = 0.0
             for product in np.arange(len(self.product_list)):
+                # check renew
                 self.portfolio[product]._check_renew(date_=date_)
-                if date_ in REBALANCE_DATE_RANGE:
-                    ytd_designed_product_value = (self.total_value[-1][1] + self.total_amount_not_allocated) * \
-                                                 self.product_list[product]['weight']
-                    self.total_amount_not_allocated = 0.0# sau khi rebalance thì giá trị này chuyển về 0
-                    ytd_actual_product_value = self.portfolio[product].value[-1][1]
+                # check rebalance
+                rebalance_type = MasterPortfolio.get_rebalance_type(date_=date_)
+                if rebalance_type in REBALANCE_TYPE:
+                    ytd_designed_product_value = 0.0 # khoi tao value
+                    if rebalance_type == EQUITY_IN_SIGNAL:
+                        ytd_designed_product_value = (self.total_value[-1][1] + self.total_amount_not_allocated) * \
+                                                     self.product_list[product]['weight']
+                    if rebalance_type == EQUITY_OUT_SIGNAL:
+                        ytd_designed_product_value = (self.total_value[-1][1] + self.total_amount_not_allocated) * \
+                                                     self.product_list[product]['weight_on_equity_signal_out']
+                    self.total_amount_not_allocated = 0.0
+                    ytd_actual_product_value = self.portfolio[product].value[-1][1] #can cu vao gia tri portfolio ngay gan nhat
                     self.portfolio[product]._cal_rebalance(
-                        date_=date_, rebalance_amount=ytd_designed_product_value - ytd_actual_product_value)
+                        date_=date_, rebalance_amount=ytd_designed_product_value - ytd_actual_product_value,
+                        rebalance_type = rebalance_type
+                    )
                 self.portfolio[product]._cal_value(date_=date_)
                 temp_total_portfolio_value += self.portfolio[product].value[-1][1]
                 ### TODO: add thêm amount not allocated:
@@ -101,21 +124,16 @@ class MasterPortfolio:
                         self.total_amount_not_allocated += self.portfolio[product].amount_not_allocated[-1]['amount']
             self.total_value.append([date_, temp_total_portfolio_value])
 
-### testing
-from common.helper.config import config
-from datetime import timedelta
+
 import pandas as pd
-# start_date = config.run_date - timedelta(days=360)
-# end_date = config.run_date - timedelta(days=1)
-# end_date = start_date + timedelta(days=180)
 
 start_date = RunDate('2017-03-01')
 end_date = RunDate('2018-01-03')
 
 product_list = [
-    dict(id=1, product_class='ssaving', weight=0.3),
-    dict(id=2, product_class='son', weight=0.2),
-    dict(id=3, product_class='sbond', weight=0.5)
+    dict(id=1, product_class='ssaving', weight=0.3, weight_on_equity_signal_out=0.2),
+    dict(id=2, product_class='son', weight=0.2, weight_on_equity_signal_out=0.3),
+    dict(id=3, product_class='sbond', weight=0.5, weight_on_equity_signal_out=0.4)
 ]
 master_portfolio = MasterPortfolio(start_date=start_date, end_date=end_date, initial_amount=1e9,
                                    rebalance_option=None,
@@ -137,4 +155,4 @@ port1_port2_df = pd.merge(port1_df, port2_df, on='date')
 port1_2_3_df = pd.merge(port1_port2_df, port3_df, on='date')
 
 df = pd.merge(port1_2_3_df, master_portfolio_df, on='date')
-df.to_excel('test_sbond_v2_rebalance.xlsx', index=False)
+df.to_excel('test_sbond_v3_rebalance_type.xlsx', index=False)

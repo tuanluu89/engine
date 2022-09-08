@@ -42,7 +42,7 @@ class Ssaving:
                      interest=interest)
         self.order.append(order)
 
-    def _cal_rebalance(self, date_, rebalance_amount):
+    def _cal_rebalance(self, date_, rebalance_amount, rebalance_type):
         """
         neu rebalance_amount >0 thi gen_order moi
         neu rebalance_amount <0: tìm cách làm nào:
