@@ -2,7 +2,7 @@ from common.helper.config.utils import RunDate
 from datetime import timedelta
 import numpy as np
 
-SSAVING_DEFAULT_TENOR = 30#90
+SSAVING_DEFAULT_TENOR = 90
 SSAVING_DEFAULT_INTEREST = 0.051
 SSAVING_DEFAULT_TAX = 0.05
 SSAVING_DEFAULT_PREWITHDRAW_LESS_THAN_30DAY_RATE = 0.002
@@ -34,9 +34,7 @@ class Ssaving:
         end_date = end
         maturity_date = start_date + timedelta(days=SSAVING_DEFAULT_TENOR)
         amount = amount
-        volume = volume
         interest = SSAVING_DEFAULT_INTEREST
-        price = price
         # order = [id, start_date, end_date, maturity_date, amount, volume, interest, price]
         order = dict(id=id, start_date=start_date, end_date=end_date, maturity_date=maturity_date, amount=amount,
                      interest=interest)

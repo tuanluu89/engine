@@ -83,10 +83,8 @@ class MasterPortfolio:
                     # =>call function reblance cho từng portfolio
         # calculate portfolio value
         for i in np.arange(len(self.date_range)):
-            # print(self.date_range[i])
             # b1 neu la ngay dau tien thi allocate portfolio rui gen_order
             date_ = self.date_range[i]
-
             if i == 0:
                 self.allocate()
                 for product in np.arange(len(self.product_list)):
@@ -133,7 +131,7 @@ end_date = RunDate('2018-01-03')
 product_list = [
     dict(id=1, product_class='ssaving', weight=0.3, weight_on_equity_signal_out=0.2),
     dict(id=2, product_class='son', weight=0.2, weight_on_equity_signal_out=0.3),
-    dict(id=3, product_class='sbond', weight=0.5, weight_on_equity_signal_out=0.4)
+    dict(id=3, product_class='sbond', weight=0.5, weight_on_equity_signal_out=0.5)
 ]
 master_portfolio = MasterPortfolio(start_date=start_date, end_date=end_date, initial_amount=1e9,
                                    rebalance_option=None,

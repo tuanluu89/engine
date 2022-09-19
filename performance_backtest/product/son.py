@@ -36,12 +36,9 @@ class Son:
         end_date = end
         maturity_date = start_date + timedelta(days=SON_TENOR)
         amount = amount
-        volume = volume
         interest = SON_DEFAULT_INTEREST_RATE
         if amount < SON_MIN_INTEREST_CAP:
             interest = SON_MIN_INTEREST_RATE
-        price = price
-        # order = [id, start_date, end_date, maturity_date, amount, volume, interest, price]
         order = dict(id=id, start_date=start_date, end_date=end_date, maturity_date=maturity_date, amount=amount,
                      interest=interest)
         self.order.append(order)
